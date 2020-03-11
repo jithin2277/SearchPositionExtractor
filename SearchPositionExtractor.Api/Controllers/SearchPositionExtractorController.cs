@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using SearchPositionExtractor.Data;
@@ -30,16 +31,29 @@ namespace SearchPositionExtractor.Api.Controllers
                 return BadRequest("Postion term cannot be blank");
             }
 
-            var searchPositions = new List<SearchPosition>();
-            var url = $"{Constants.GOOGLE_SEARCH_URL}?q={searchTerm.Trim().Replace(" ", "+")}";
-            for (int i = 0; i < pages; i++)
+            try
             {
-                string pageString = (i == 0) ? string.Empty : $"&start={i * 10}";
+                var searchPositions = new List<SearchPosition>();
+                var url = $"{Constants.GOOGLE_SEARCH_URL}?q={searchTerm.Trim().Replace(" ", "+")}";
+                for (int i = 0; i < pages; i++)
+                {
+                    string pageString = (i == 0) ? string.Empty : $"&start={i * 10}";
 
-                searchPositions.Add(new SearchPosition { PageNumber = i + 1, Positions = await _postionExtractor.GetPositions($"{url}{pageString}", positionTerm) });
+                    searchPositions.Add(new SearchPosition { PageNumber = i + 1, Positions = await _postionExtractor.GetPositions($"{url}{pageString}", positionTerm) });
+                }
+
+                return Ok(searchPositions);
             }
+            catch
+            {
+                var problems = new ValidationProblemDetails
+                {
+                    Status = (int)HttpStatusCode.InternalServerError,
+                    Detail = "Error Occurred!"
+                };
 
-            return Ok(searchPositions);
+                return ValidationProblem(problems);
+            }
         }
     }
 }
